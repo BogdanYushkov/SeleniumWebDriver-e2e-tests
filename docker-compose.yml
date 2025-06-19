@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  # MariaDB database service
+  mariadb:
+    image: mariadb:10.5 # Use MariaDB version 10.5 image
+    ports:
+      - "3306:3306" # Optional: Port forwarding for database access from the host (e.g., via DBeaver)
+    environment:
+      MYSQL_ROOT_PASSWORD: password # Password for the root user of MariaDB
+      MYSQL_DATABASE: tracks      # Create a database named 'tracks' on startup
+    volumes:
+      - db_data:/var/lib/mysql # Persistent volume for database data
+      # Mounting a folder with SQL scripts for database initialization
+      # Scripts in this folder will be automatically executed on the first container startup
+      - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      e2e-frameworks:
+        aliases: # Add alias 'db' for the mariadb service
+          - db
+    healthcheck: # Health check for the database service
+      test: ["CMD", "sh", "-c", "mysql -h mariadb -u root -ppassword -e 'SELECT 1;' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  # Application service tracks-app
+  tracks-app:
+    image: tracksapp/tracks # Use the image tracksapp/tracks for the application
+    ports:
+      - "3000:3000" # Forward port 3000 of the application to the host machine
+    depends_on:
+      mariadb:
+        condition: service_healthy # Start tracks-app only after mariadb becomes healthy
+    networks:
+      - e2e-frameworks # Connect to the custom network
+    # Additionally, if the tracks-app application requires explicit environment variables for database connection:
+    # environment:
+    #   DATABASE_HOST: db # Hostname for database connection
+    #   DATABASE_PORT: 3306
+    #   DATABASE_USER: root
+    #   DATABASE_PASSWORD: password
+    #   DATABASE_NAME: tracks
+    # (Variable names may differ depending on the tracks-app application)
+
+networks:
+  e2e-frameworks: # Definition of the custom network
+    driver: bridge # Use the 'bridge' network driver
+
+volumes:
+  db_data: # Declaration of a named volume for MariaDB data persistence

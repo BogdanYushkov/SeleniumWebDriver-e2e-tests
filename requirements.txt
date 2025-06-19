@@ -1,0 +1,8 @@
+httpx~=0.28.1
+pytest~=8.4.0
+pytest-html
+selenium
+webdriver-manager
+lxml
+
+utils~=1.0.2
